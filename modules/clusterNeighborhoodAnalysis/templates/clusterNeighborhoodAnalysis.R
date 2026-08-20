@@ -192,8 +192,10 @@ clean_celltype <- function(x) {
 # Calculate spatial connectivity, mean hop distance and plot separately for each sample
 getAdj = function(celltypes, OUTDIR, dat, name="Celltype") {
     lapply(celltypes, function(celltype) {
+        print(celltype)
         mkdir(paste0(OUTDIR, "/", celltype), recursive=T, showWarnings=F)
         adjs = lapply(unique(dat$Sample), function(sample){
+            print(sample)
             sub = subset(dat, Sample==sample)
             adj = getSpatialNeighborAdjacency(seurat_obj=sub, k=50,
                 coord_cols = c("x", "y"),  # adjust if your coordinate column names differ
