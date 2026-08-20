@@ -1,17 +1,17 @@
 #!/usr/bin/env nextflow
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    cosMxDS
+    XeniumDS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     Github : 
-    Contact: Yuan.li@nbis.se
+    Contact: 
 ----------------------------------------------------------------------------------------
 */
 
 nextflow.enable.dsl=2
 
 println """\
-         XeniumDEGs   P I P E L I N E
+         XeniumDS   P I P E L I N E
          ===================================
          GitHub: 
          ___________________________________
@@ -27,7 +27,12 @@ println """\
 */
 
 include { getDataCSV } from './modules/2getDataCSV'
+include { clusterNei } from './modules/clusterNeighborhoodAnalysis'
 
+workflow ENTRY_clusterNei {
+    def INFILE = Channel.value(params.INFILE)
+    clusterNei(INFILE)
+}
 
 workflow {
     // **************** 1. Save layer normalized data to scv files ****************

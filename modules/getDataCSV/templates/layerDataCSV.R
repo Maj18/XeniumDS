@@ -35,7 +35,8 @@ object.size(dat)
 DefaultAssay(dat) <- "Xenium"
 # dat <- JoinLayers(dat, assay = "Xenium")
 # print(dat)
-layer_names <- Layers(dat[["Xenium"]])
+assay_name = "Xenium"
+layer_names <- Layers(dat[[assay_name]])
 dims_by_layer <- lapply(layer_names, function(l) {
   x <- GetAssayData(dat, assay = assay_name, layer = l)
   c(features = nrow(x), cells = ncol(x))
