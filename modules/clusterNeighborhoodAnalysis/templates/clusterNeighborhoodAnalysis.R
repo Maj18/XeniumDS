@@ -77,8 +77,10 @@ getSpatialNeighborAdjacency = function(seurat_obj, k=50,
         radius_min = 0  # same as sopa radius=[0,50] (we'll exclude self by using >0)
     ){
     img_id <- names(seurat_obj@images)[1]  # pick the correct image/slice
+    print(img_id)
     cells <- colnames(seurat_obj)
     n <- length(cells)
+    print(n)
 
     # k <- 50  # only used to speed up search; we'll still filter by radius
     # ---- extract coordinates aligned to Seurat cell names ----
@@ -86,11 +88,13 @@ getSpatialNeighborAdjacency = function(seurat_obj, k=50,
             as.data.frame()
     rownames(coords_df) = seurat_obj@images[[img_id]]@boundaries$centroids@cells
     coords_df <- coords_df[colnames(seurat_obj), , drop = FALSE]
+    print(dim(coords_df))
 
     # x <- coords_df[, coord_cols[1]]
     # y <- coords_df[, coord_cols[2]]
     # xy <- cbind(x, y)
     xy = coords_df[, coord_cols, drop = FALSE]
+    print(head(xy))
 
     # ---- radius neighbors ----
     # RANN gives neighbors within a max distance; then we drop <= radius_min
@@ -98,12 +102,14 @@ getSpatialNeighborAdjacency = function(seurat_obj, k=50,
                     radius = radius_max, k = k)
     # nn$idx is a matrix of neighbor indices (with -1 for none)
     idx <- nn$nn.idx
+    print(head(idx))
     # n <- ncol(seurat_obj)  # number of cells (matches colnames)
     # Build edges (i -> j) for all neighbors j where distance > radius_min
     # We'll compute distances only for found neighbors to filter by radius_min.
     # (To keep it efficient, use the returned neighbor distances if available.)
     # nn$dist returns distances corresponding to nn$idx.
     dist <- nn$nn.dist
+    print(head(dist))
     # convert (row i, neighbor col idx[i, ] ) to edge list
     rows <- rep(seq_len(n), times = ncol(idx)) # it goes through cell list first
     cols <- as.vector(idx)
@@ -116,6 +122,7 @@ getSpatialNeighborAdjacency = function(seurat_obj, k=50,
     # there is an edge between i and j if at least one direction exists. That is not “mutual neighbors”
     adj <- (adj + t(adj)) > 0
     adj <- Matrix::drop0(adj)   # optional cleanup
+    print(adj[1:10, 1:10])
     # adj is now your “spatial_connectivities”-like graph
     # Row/col names (optional, but useful)
     rownames(adj) <- colnames(seurat_obj)
@@ -135,13 +142,14 @@ mean_hop_distance <- function(adj, cell_type, title="Dynamic Distance Heatmap", 
     if (!is.null(colnames(adj))) {
         cell_type <- cell_type[colnames(adj)]
     }
-
+    print(head(cell_type))
     g <- graph_from_adjacency_matrix(adj != 0, mode = "undirected", diag = FALSE)
-
+    print(g)
     types <- sort(unique(cell_type))
+    print(types)
     D <- matrix(NA_real_, nrow = length(types), 
         ncol = length(types), dimnames = list(types, types))
-
+    print(D)
     for (src in types) {
         src_cells <- which(cell_type == src)
         # For each target type, we need distance to nearest target cell
@@ -158,13 +166,17 @@ mean_hop_distance <- function(adj, cell_type, title="Dynamic Distance Heatmap", 
             D[src, tgt] <- mean(nearest_hops, na.rm = TRUE)
         }
     }
+    print(D[1:5, 1:5])
     W <- 1 / (D + 1e-8)
     diag(W) <- 0
+    print(W[1:5, 1:5])
     base_width  = 5
     base_height = 5
     scale_factor = 0.3 # Inches to add per element
     pdf_width  = base_width + (ncol(D) * scale_factor)
     pdf_height = base_height + (nrow(D) * scale_factor)
+    print(pdf_width)
+    print(pdf_height)
     pdf(figurePath, h=pdf_height, w=pdf_width)
         print(pheatmap::pheatmap(
             mat = D,
@@ -197,16 +209,20 @@ getAdj = function(celltypes, OUTDIR, dat, name="Celltype") {
         adjs = lapply(unique(dat$Sample), function(sample){
             print(sample)
             sub = subset(dat, Sample==sample)
+            print(sub)
             adj = getSpatialNeighborAdjacency(seurat_obj=sub, k=50,
-                coord_cols = c("x", "y"),  # adjust if your coordinate column names differ
+                coord_cols = c("x", "y"),
                 radius_max = 50,
                 radius_min = 0) 
+            print(adj[1:4, 1:5])
             cell_type = setNames(as.data.frame(sub[[celltype]])[[1]], colnames(sub))
             cell_type = cell_type[rownames(adj)]
+            print(cell_type)
             meanDis = mean_hop_distance(adj, cell_type, 
                 title=paste0("/", name, "Neighborhood_", sample), 
                 figurePath=paste0(OUTDIR, "/", celltype, 
                     "/", name, "Neighborhood_", sample, "_", clean_celltype(celltype), ".pdf"))
+            print(meanDis)
             return(meanDis)
         }) %>% setNames(unique(dat$Sample))
         adjs_D = lapply(adjs, function(adj){
