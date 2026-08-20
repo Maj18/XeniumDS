@@ -193,7 +193,7 @@ clean_celltype <- function(x) {
 getAdj = function(celltypes, OUTDIR, dat, name="Celltype") {
     lapply(celltypes, function(celltype) {
         print(celltype)
-        mkdir(paste0(OUTDIR, "/", celltype), recursive=T, showWarnings=F)
+        dir.create(paste0(OUTDIR, "/", celltype), recursive=T, showWarnings=F)
         adjs = lapply(unique(dat$Sample), function(sample){
             print(sample)
             sub = subset(dat, Sample==sample)
