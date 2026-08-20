@@ -1,4 +1,4 @@
-process Banksy {
+process clusterNei {
     publishDir "${params.outdir}/",
         mode: 'copy'
     tag "markers"
