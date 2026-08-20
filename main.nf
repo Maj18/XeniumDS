@@ -26,7 +26,7 @@ println """\
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { getDataCSV } from './modules/2getDataCSV'
+include { getDataCSV } from './modules/getDataCSV'
 include { clusterNei } from './modules/clusterNeighborhoodAnalysis'
 
 workflow ENTRY_clusterNei {
