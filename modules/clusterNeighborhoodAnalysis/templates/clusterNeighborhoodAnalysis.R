@@ -147,7 +147,7 @@ mean_hop_distance <- function(adj, cell_type, title="Dynamic Distance Heatmap", 
     g <- graph_from_adjacency_matrix(adj != 0, mode = "undirected", diag = FALSE)
     # print(g)
     types <- sort(unique(cell_type))
-    print(types)
+    # print(types)
     print("message2")
     # Order cells to align with cell_type
     cells_by_type = lapply(types, function(tp) which(cell_type==tp))
@@ -231,9 +231,8 @@ getAdj = function(celltypes, OUTDIR, dat) {
             sub = subset(dat, Sample==sample)
             Idents(sub) = as.data.frame(sub@meta.data)[[celltype]]
             sub = subset(x = sub, downsample = 1000)
-            #print(head(clean_celltype(sub[[celltype]])))
             #print(head(sub[[celltype]]))
-            sub[[celltype]] = clean_celltype(sub[[celltype]])
+            sub@meta.data[[celltype]] = clean_celltype(as.data.frame(sub@meta.data)[[celltype]])
             print(sub)
             adj = getSpatialNeighborAdjacency(seurat_obj=sub, k=50,
                 coord_cols = c("x", "y"), radius_max = 50,
@@ -242,7 +241,10 @@ getAdj = function(celltypes, OUTDIR, dat) {
             print(adj[1:4, 1:5])
             # print(head(sub[[celltype]]))
             cell_type = setNames(as.data.frame(sub@meta.data)[[celltype]], colnames(sub))
+            saveRDS(cell_type, "cell_type.RDS")
+            print(dim(cell_type))
             cell_type = cell_type[rownames(adj)]
+            print(cell_type[1])
             # print(head(cell_type))
             print(paste0("/HopDistance_", sample))
             print(paste0(OUTDIR, "/HopDistance_", sample, "_", celltype, ".pdf"))
