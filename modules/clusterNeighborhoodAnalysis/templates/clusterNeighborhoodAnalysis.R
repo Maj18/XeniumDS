@@ -211,9 +211,9 @@ getAdj = function(celltypes, OUTDIR, dat, name="Celltype") {
             sub = subset(dat, Sample==sample)
             print(sub)
             adj = getSpatialNeighborAdjacency(seurat_obj=sub, k=50,
-                coord_cols = c("x", "y"),
-                radius_max = 50,
-                radius_min = 0) 
+                coord_cols = c("x", "y"), radius_max = 50,
+                radius_min = 0)
+            print(dim(adj))
             print(adj[1:4, 1:5])
             cell_type = setNames(as.data.frame(sub[[celltype]])[[1]], colnames(sub))
             cell_type = cell_type[rownames(adj)]
@@ -282,8 +282,11 @@ getAdj = function(celltypes, OUTDIR, dat, name="Celltype") {
 # Only use analysis_include == TRUE
 dat$Sample = dat$sample_id
 dat = subset(dat, subset = (analysis_include==TRUE)&(Sample!="ABX8and5"))
+print(dat)
 celltypes = c("final_cell_type") 
-getAdj(celltypes, OUTDIR, dat, name="Celltype")
+print(celltypes)
+getAdj(celltypes, OUTDIR, dat=dat, name="Celltype")
+
 
 
 
@@ -297,13 +300,13 @@ getAdj(celltypes, OUTDIR, dat, name="Celltype")
 #                     gene.mapping = TRUE, gex.slot = "data", 
 #                     shiny.title = "NBIS8427", 
 #                     shiny.dir = paste0(OUTDIR, "/ShinyApp"))
-
 # print("How to use shiny app easyshiny: ")
 # print(" 1. Turn on rstudio.")
 # print(" 2. In the bottom right window of rstudio:")
 # print(" 3. click the folder `ShinyApp`")
 # print(" 4. double click file: `server.R` to open it, now you can read the content of this file in the top left window")
 # print(" 5. In the top left menu bar, click the green batoon **Run App**, a new window will pop up, where you can play around.")
+
 
 
 
