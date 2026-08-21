@@ -59,8 +59,8 @@ mypal = kelly()[-1]
 ################# Import data ##################
 # INFILE = "INFILE/merged_projected_k32_all_cells_refined_v1.rds"
 dat = readRDS(INFILE)
-dat
-colnames(dat@meta.data)
+print(dat)
+print(colnames(dat@meta.data))
 
 
 ################# Celltype neighborhood analysis ##################
@@ -147,19 +147,29 @@ mean_hop_distance <- function(adj, cell_type, title="Dynamic Distance Heatmap", 
     print(g)
     types <- sort(unique(cell_type))
     print(types)
+    # Order cells to align with cell_type
+    cells_by_type = lapply(types, function(tp) which(cell_type==tp))
+    names(cells_by_type) = types
+    # Compute all-pairs distances once (|V|x|V|)
+    dist_all = distances(g, v=V(g), to=V(g))
+    print(dist_all)
+    # Aggregate:
     D <- matrix(NA_real_, nrow = length(types), 
         ncol = length(types), dimnames = list(types, types))
     print(D)
     for (src in types) {
-        src_cells <- which(cell_type == src)
+        src_cells = cells_by_type[[src]]
+        # src_cells <- which(cell_type == src)
         # For each target type, we need distance to nearest target cell
         for (tgt in types) {
-            tgt_cells <- which(cell_type == tgt)
+            tgt_cells = cells_by_type[[tgt]]
+            # tgt_cells <- which(cell_type == tgt)
             # Single-source shortest paths from all tgt cells at once
             # Use multi-source distances by creating a super-source via union:
             # Approach: compute distances from tgt subset, then take min for src cells.
             # igraph doesn't directly do multi-source min hops, but we can do:
-            dist_mat <- distances(g, v = tgt_cells, to = src_cells)  # |tgt| x |src|
+            # dist_mat <- distances(g, v = tgt_cells, to = src_cells)  # |tgt| x |src|
+            dist_mat = dist_all[tgt_cells, src_cells, drop=FALSE]
             # For each src cell, nearest tgt distance:
             nearest_hops <- apply(dist_mat, 2, min)
             # mean over src cells
@@ -205,23 +215,27 @@ clean_celltype <- function(x) {
 getAdj = function(celltypes, OUTDIR, dat, name="Celltype") {
     lapply(celltypes, function(celltype) {
         print(celltype)
-        dir.create(paste0(OUTDIR, "/", celltype), recursive=T, showWarnings=F)
+        dir.create(paste0(OUTDIR, "/", clean_celltype(celltype)), recursive=T, showWarnings=F)
         adjs = lapply(unique(dat$Sample), function(sample){
             print(sample)
             sub = subset(dat, Sample==sample)
+            Idents(sub) = sub[[celltype]]
+            sub = subset(x = sub, downsample = 1000)
+            sub[[celltype]] = clean_celltype(sub[[celltype]])
             print(sub)
             adj = getSpatialNeighborAdjacency(seurat_obj=sub, k=50,
                 coord_cols = c("x", "y"), radius_max = 50,
                 radius_min = 0)
             print(dim(adj))
             print(adj[1:4, 1:5])
+            print(head(sub[[celltype]]))
             cell_type = setNames(as.data.frame(sub[[celltype]])[[1]], colnames(sub))
             cell_type = cell_type[rownames(adj)]
             print(cell_type)
             meanDis = mean_hop_distance(adj, cell_type, 
-                title=paste0("/", name, "Neighborhood_", sample), 
-                figurePath=paste0(OUTDIR, "/", celltype, 
-                    "/", name, "Neighborhood_", sample, "_", clean_celltype(celltype), ".pdf"))
+                title=paste0("/HopDistance_", sample), 
+                figurePath=paste0(OUTDIR, "/", clean_celltype(celltype), 
+                    "/", name, "HopDistance_", sample, "_", clean_celltype(celltype), ".pdf"))
             print(meanDis)
             return(meanDis)
         }) %>% setNames(unique(dat$Sample))
@@ -231,7 +245,8 @@ getAdj = function(celltypes, OUTDIR, dat, name="Celltype") {
         adjs_W = lapply(adjs, function(adj){
             adj$Weight
         }) %>% setNames(paste0(unique(dat$Sample), "_Weight"))
-
+        saveRDS(adjs, paste0(OUTDIR, "/", clean_celltype(celltype), "/", 
+            name, "AdjacentMatrices_", clean_celltype(celltype), ".RDS"), compress=TRUE)
         # Combine samples, calcualte mean hop distance, and plot
         ## Find the common intersecting Row names across ALL matrices
         common_rows = reduce(lapply(adjs_D, rownames), intersect)
@@ -244,21 +259,25 @@ getAdj = function(celltypes, OUTDIR, dat, name="Celltype") {
         })
         matrix_3d <- array(
             data = unlist(cleaned_adjs_D), 
-            dim = c(nrow(matrix_list[[1]]), ncol(matrix_list[[1]]), length(matrix_list)),
+            dim = c(nrow(cleaned_adjs_D[[1]]), ncol(cleaned_adjs_D[[1]]), length(cleaned_adjs_D)),
             dimnames = list(rownames(cleaned_adjs_D[[1]]), colnames(cleaned_adjs_D[[1]]), NULL)
         )
         # Calculate the mean for each intersecting spot
         ## margin = c(1, 2) instructs R to collapse the 3rd dimension (layers) by taking the mean
-        mean_matrix <- apply(matrix_3d, margin = c(1, 2), FUN = mean, na.rm = TRUE)
+        mean_matrix <- apply(matrix_3d, MARGIN = c(1, 2), FUN = mean, na.rm = TRUE)
         base_width  = 5
         base_height = 5
         scale_factor = 0.3 # Inches to add per element
         pdf_width  = base_width + (ncol(mean_matrix) * scale_factor)
         pdf_height = base_height + (nrow(mean_matrix) * scale_factor)
-        pdf(paste0(OUTDIR, "/", celltype, "/", name, "Neighborhood_allSamples_", celltype, ".pdf"), 
+        D_plot <- mean_matrix
+        finite_vals <- D_plot[is.finite(D_plot)]
+        max_finite <- max(finite_vals, na.rm = TRUE)
+        D_plot[!is.finite(D_plot)] <- max_finite * 1.1
+        pdf(paste0(OUTDIR, "/", clean_celltype(celltype), "/", name, "HopDistance_allSamples_", clean_celltype(celltype), ".pdf"), 
             h=pdf_height, w=pdf_width)
             print(pheatmap::pheatmap(
-                mat = mean_matrix,
+                mat = D_plot,
                 # filename = "distance_heatmap.pdf",
                 # width = pdf_width,
                 # height = pdf_height,
@@ -267,15 +286,14 @@ getAdj = function(celltypes, OUTDIR, dat, name="Celltype") {
                 color = colorRampPalette(c("navy", "white", "firebrick3"))(50), # Custom color gradient
                 display_numbers = TRUE,      # Set to FALSE if your matrix is too large for text numbers
                 number_color = "black",
-                main = title
+                main = "HopDistance_allSamples"
             ))
         dev.off()
-        saveRDS(adjs, paste0(OUTDIR, "/", celltype, "/", 
-            name, "AdjacentMatrices_", celltype, ".RDS", compress=TRUE))
         openxlsx::write_xlsx(c(adjs_D, adj_mean=mean_matrix),
-            file = paste0(OUTDIR, "/", celltype, "/", 
-            name, "AdjacentMatrices_", celltype, ".xlsx"),
-            rowNames = TRUE)
+            file = paste0(OUTDIR, "/", clean_celltype(celltype), "/", 
+            name, "AdjacentMatrices_", clean_celltype(celltype), ".xlsx"),
+            rowNames = TRUE
+        )
     })
 }
 
@@ -286,27 +304,6 @@ print(dat)
 celltypes = c("final_cell_type") 
 print(celltypes)
 getAdj(celltypes, OUTDIR, dat=dat, name="Celltype")
-
-
-
-
-#################### Make a shiny app ######################
-# print("Make a shiny app:")
-# objs_v3 = dat
-# objs_v3[["RNA3"]] = as(object = dat[["Xenium"]], Class = "Assay")
-# DefaultAssay(objs_v3) = "RNA3"
-# scConf = easyshiny::create_config(objs_v3)
-# easyshiny::make_app(obj = objs_v3, scConf = scConf, gex.assay = "RNA3", 
-#                     gene.mapping = TRUE, gex.slot = "data", 
-#                     shiny.title = "NBIS8427", 
-#                     shiny.dir = paste0(OUTDIR, "/ShinyApp"))
-# print("How to use shiny app easyshiny: ")
-# print(" 1. Turn on rstudio.")
-# print(" 2. In the bottom right window of rstudio:")
-# print(" 3. click the folder `ShinyApp`")
-# print(" 4. double click file: `server.R` to open it, now you can read the content of this file in the top left window")
-# print(" 5. In the top left menu bar, click the green batoon **Run App**, a new window will pop up, where you can play around.")
-
 
 
 
