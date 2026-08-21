@@ -187,9 +187,13 @@ mean_hop_distance <- function(adj, cell_type, title="Dynamic Distance Heatmap", 
     pdf_height = base_height + (nrow(D) * scale_factor)
     print(pdf_width)
     print(pdf_height)
+    D_plot <- mean_matrix
+    finite_vals <- D_plot[is.finite(D_plot)]
+    max_finite <- max(finite_vals, na.rm = TRUE)
+    D_plot[!is.finite(D_plot)] <- max_finite * 1.1
     pdf(figurePath, h=pdf_height, w=pdf_width)
         print(pheatmap::pheatmap(
-            mat = D,
+            mat = D_plot,
             # filename = "distance_heatmap.pdf",
             # width = pdf_width,
             # height = pdf_height,

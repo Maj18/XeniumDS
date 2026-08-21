@@ -1,8 +1,8 @@
 process clusterNei {
     publishDir "${params.outdir}/",
         mode: 'copy'
-    tag "markers"
-    label "highMemMT2"
+    tag "Nei"
+    label "highMemMT4"
     conda "${moduleDir}/environment.yml"
     container "${ workflow.containerEngine == 'singularity' || workflow.containerEngine == "apptainer" ?
         'docker://yuanli202004/seurat5.4_doubletfinder:v1.0.3':
