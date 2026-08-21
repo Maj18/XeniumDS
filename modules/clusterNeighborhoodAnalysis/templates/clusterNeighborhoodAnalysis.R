@@ -145,7 +145,7 @@ mean_hop_distance <- function(adj, cell_type, title="Dynamic Distance Heatmap", 
     # print(head(cell_type))
     print("message1")
     g <- graph_from_adjacency_matrix(adj != 0, mode = "undirected", diag = FALSE)
-    print(g)
+    # print(g)
     types <- sort(unique(cell_type))
     print(types)
     print("message2")
@@ -201,9 +201,6 @@ mean_hop_distance <- function(adj, cell_type, title="Dynamic Distance Heatmap", 
     pdf(figurePath, h=pdf_height, w=pdf_width)
         print(pheatmap::pheatmap(
             mat = D_plot,
-            # filename = "distance_heatmap.pdf",
-            # width = pdf_width,
-            # height = pdf_height,
             cluster_rows = TRUE,         # Automatically clusters similar rows
             cluster_cols = TRUE,         # Automatically clusters similar columns
             color = colorRampPalette(c("navy", "white", "firebrick3"))(50), # Custom color gradient
@@ -224,10 +221,11 @@ clean_celltype <- function(x) {
 }
 
 # Calculate spatial connectivity, mean hop distance and plot separately for each sample
-getAdj = function(celltypes, OUTDIR, dat, name="Celltype") {
+getAdj = function(celltypes, OUTDIR, dat) {
     lapply(celltypes, function(celltype) {
         print(celltype)
-        dir.create(paste0(OUTDIR, "/", clean_celltype(celltype)), recursive=T, showWarnings=F)
+        # print(paste0(OUTDIR, "/", celltype))
+        dir.create(OUTDIR, recursive=T, showWarnings=F)
         adjs = lapply(unique(dat$Sample), function(sample){
             print(sample)
             sub = subset(dat, Sample==sample)
@@ -246,10 +244,11 @@ getAdj = function(celltypes, OUTDIR, dat, name="Celltype") {
             cell_type = setNames(as.data.frame(sub@meta.data)[[celltype]], colnames(sub))
             cell_type = cell_type[rownames(adj)]
             # print(head(cell_type))
+            print(paste0("/HopDistance_", sample))
+            print(paste0(OUTDIR, "/HopDistance_", sample, "_", celltype, ".pdf"))
             meanDis = mean_hop_distance(adj, cell_type, 
                 title=paste0("/HopDistance_", sample), 
-                figurePath=paste0(OUTDIR, "/", celltype, 
-                    "/", name, "HopDistance_", sample, "_", celltype, ".pdf"))
+                figurePath=paste0(OUTDIR, "/HopDistance_", sample, "_", celltype, ".pdf"))
             return(meanDis)
         }) %>% setNames(unique(dat$Sample))
         adjs_D = lapply(adjs, function(adj){
@@ -258,8 +257,8 @@ getAdj = function(celltypes, OUTDIR, dat, name="Celltype") {
         adjs_W = lapply(adjs, function(adj){
             adj$Weight
         }) %>% setNames(paste0(unique(dat$Sample), "_Weight"))
-        saveRDS(adjs, paste0(OUTDIR, "/", clean_celltype(celltype), "/", 
-            name, "AdjacentMatrices_", clean_celltype(celltype), ".RDS"), compress=TRUE)
+        print(paste0(OUTDIR, "/AdjacentMatrices_", celltype, ".RDS"))
+        saveRDS(adjs, paste0(OUTDIR, "/AdjacentMatrices_", celltype, ".RDS"), compress=TRUE)
         # Combine samples, calcualte mean hop distance, and plot
         ## Find the common intersecting Row names across ALL matrices
         common_rows = reduce(lapply(adjs_D, rownames), intersect)
@@ -287,7 +286,8 @@ getAdj = function(celltypes, OUTDIR, dat, name="Celltype") {
         finite_vals <- D_plot[is.finite(D_plot)]
         max_finite <- max(finite_vals, na.rm = TRUE)
         D_plot[!is.finite(D_plot)] <- max_finite * 1.1
-        pdf(paste0(OUTDIR, "/", clean_celltype(celltype), "/", name, "HopDistance_allSamples_", clean_celltype(celltype), ".pdf"), 
+        print(paste0(OUTDIR, "/HopDistance_allSamples_", celltype, ".pdf"))
+        pdf(paste0(OUTDIR, "/HopDistance_allSamples_", celltype, ".pdf"), 
             h=pdf_height, w=pdf_width)
             print(pheatmap::pheatmap(
                 mat = D_plot,
@@ -302,9 +302,9 @@ getAdj = function(celltypes, OUTDIR, dat, name="Celltype") {
                 main = "meanHopDistance_allSamples"
             ))
         dev.off()
+        print(paste0(OUTDIR, "/AdjacentMatrices_", celltype, ".xlsx"))
         openxlsx::write_xlsx(c(adjs_D, adj_mean=mean_matrix),
-            file = paste0(OUTDIR, "/", clean_celltype(celltype), "/", 
-            name, "AdjacentMatrices_", clean_celltype(celltype), ".xlsx"),
+            file = paste0(OUTDIR, "/AdjacentMatrices_", celltype, ".xlsx"),
             rowNames = TRUE
         )
     })
@@ -316,7 +316,7 @@ dat = subset(dat, subset = (analysis_include==TRUE)&(Sample!="ABX8and5"))
 print(dat)
 celltypes = c("final_cell_type") 
 print(celltypes)
-getAdj(celltypes, OUTDIR, dat=dat, name="Celltype")
+getAdj(celltypes, OUTDIR, dat=dat)
 
 
 

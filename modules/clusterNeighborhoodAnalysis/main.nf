@@ -16,7 +16,7 @@ process clusterNei {
         
     script:
     """
-    mkdir -p celltypeNei
+    mkdir -p celltypeNei/
     Rscript ${moduleDir}/templates/clusterNeighborhoodAnalysis.R \
         --OUTDIR "celltypeNei/" \
         --INFILE "${INFILE}"
