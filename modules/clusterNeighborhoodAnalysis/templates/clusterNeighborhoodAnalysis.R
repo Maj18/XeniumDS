@@ -143,24 +143,29 @@ mean_hop_distance <- function(adj, cell_type, title="Dynamic Distance Heatmap", 
         cell_type <- cell_type[colnames(adj)]
     }
     print(head(cell_type))
+    print("message1")
     g <- graph_from_adjacency_matrix(adj != 0, mode = "undirected", diag = FALSE)
     print(g)
     types <- sort(unique(cell_type))
     print(types)
+    print("message2")
     # Order cells to align with cell_type
     cells_by_type = lapply(types, function(tp) which(cell_type==tp))
     names(cells_by_type) = types
     # Compute all-pairs distances once (|V|x|V|)
     dist_all = distances(g, v=V(g), to=V(g))
-    print(dist_all)
+    # print(dist_all)
     # Aggregate:
+    print("message3")
     D <- matrix(NA_real_, nrow = length(types), 
         ncol = length(types), dimnames = list(types, types))
-    print(D)
+    # print(D)
+    print("message4")
     for (src in types) {
         src_cells = cells_by_type[[src]]
         # src_cells <- which(cell_type == src)
         # For each target type, we need distance to nearest target cell
+        print(src)
         for (tgt in types) {
             tgt_cells = cells_by_type[[tgt]]
             # tgt_cells <- which(cell_type == tgt)
@@ -176,10 +181,11 @@ mean_hop_distance <- function(adj, cell_type, title="Dynamic Distance Heatmap", 
             D[src, tgt] <- mean(nearest_hops, na.rm = TRUE)
         }
     }
-    print(D[1:5, 1:5])
+    print("message6")
+    # print(D[1:5, 1:5])
     W <- 1 / (D + 1e-8)
     diag(W) <- 0
-    print(W[1:5, 1:5])
+    # print(W[1:5, 1:5])
     base_width  = 5
     base_height = 5
     scale_factor = 0.3 # Inches to add per element
@@ -191,6 +197,7 @@ mean_hop_distance <- function(adj, cell_type, title="Dynamic Distance Heatmap", 
     finite_vals <- D_plot[is.finite(D_plot)]
     max_finite <- max(finite_vals, na.rm = TRUE)
     D_plot[!is.finite(D_plot)] <- max_finite * 1.1
+    print("message7")
     pdf(figurePath, h=pdf_height, w=pdf_width)
         print(pheatmap::pheatmap(
             mat = D_plot,
@@ -205,6 +212,7 @@ mean_hop_distance <- function(adj, cell_type, title="Dynamic Distance Heatmap", 
             main = title
         ))
     dev.off()
+    print("message8")
     return(list(Weight=W, Distance=D))
 }
 
@@ -237,12 +245,11 @@ getAdj = function(celltypes, OUTDIR, dat, name="Celltype") {
             print(head(sub[[celltype]]))
             cell_type = setNames(as.data.frame(sub@meta.data)[[celltype]], colnames(sub))
             cell_type = cell_type[rownames(adj)]
-            print(cell_type)
+            print(head(cell_type))
             meanDis = mean_hop_distance(adj, cell_type, 
                 title=paste0("/HopDistance_", sample), 
-                figurePath=paste0(OUTDIR, "/", clean_celltype(celltype), 
-                    "/", name, "HopDistance_", sample, "_", clean_celltype(celltype), ".pdf"))
-            print(meanDis)
+                figurePath=paste0(OUTDIR, "/", celltype, 
+                    "/", name, "HopDistance_", sample, "_", celltype, ".pdf"))
             return(meanDis)
         }) %>% setNames(unique(dat$Sample))
         adjs_D = lapply(adjs, function(adj){
@@ -292,7 +299,7 @@ getAdj = function(celltypes, OUTDIR, dat, name="Celltype") {
                 color = colorRampPalette(c("navy", "white", "firebrick3"))(50), # Custom color gradient
                 display_numbers = TRUE,      # Set to FALSE if your matrix is too large for text numbers
                 number_color = "black",
-                main = "HopDistance_allSamples"
+                main = "meanHopDistance_allSamples"
             ))
         dev.off()
         openxlsx::write_xlsx(c(adjs_D, adj_mean=mean_matrix),
