@@ -223,8 +223,10 @@ getAdj = function(celltypes, OUTDIR, dat, name="Celltype") {
         adjs = lapply(unique(dat$Sample), function(sample){
             print(sample)
             sub = subset(dat, Sample==sample)
-            Idents(sub) = sub[[celltype]]
+            Idents(sub) = as.data.frame(sub@meta.data)[[celltype]]
             sub = subset(x = sub, downsample = 1000)
+            print(head(clean_celltype(sub[[celltype]])))
+            print(head(sub[[celltype]]))
             sub[[celltype]] = clean_celltype(sub[[celltype]])
             print(sub)
             adj = getSpatialNeighborAdjacency(seurat_obj=sub, k=50,
@@ -233,7 +235,7 @@ getAdj = function(celltypes, OUTDIR, dat, name="Celltype") {
             print(dim(adj))
             print(adj[1:4, 1:5])
             print(head(sub[[celltype]]))
-            cell_type = setNames(as.data.frame(sub[[celltype]])[[1]], colnames(sub))
+            cell_type = setNames(as.data.frame(sub@meta.data)[[celltype]], colnames(sub))
             cell_type = cell_type[rownames(adj)]
             print(cell_type)
             meanDis = mean_hop_distance(adj, cell_type, 
@@ -260,7 +262,7 @@ getAdj = function(celltypes, OUTDIR, dat, name="Celltype") {
         ## This guarantees they all match in size, naming, and sequential order
         cleaned_adjs_D <- lapply(adjs_D, function(mat) {
             mat[common_rows, common_cols, drop = FALSE]
-        })
+        }) %>% as.data.frame()
         matrix_3d <- array(
             data = unlist(cleaned_adjs_D), 
             dim = c(nrow(cleaned_adjs_D[[1]]), ncol(cleaned_adjs_D[[1]]), length(cleaned_adjs_D)),
