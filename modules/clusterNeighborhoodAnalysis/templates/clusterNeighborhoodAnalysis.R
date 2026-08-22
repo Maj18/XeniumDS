@@ -206,7 +206,7 @@ mean_hop_distance <- function(adj, cell_type, title="Dynamic Distance Heatmap", 
         print(pheatmap::pheatmap(
             mat = D_plot,
             cluster_rows = FALSE,         # Automatically clusters similar rows
-            cluster_cols = FALSE         # Automatically clusters similar columns
+            cluster_cols = FALSE,       # Automatically clusters similar columns
             color = colorRampPalette(c("navy", "white", "firebrick3"))(50), # Custom color gradient
             display_numbers = TRUE,      # Set to FALSE if your matrix is too large for text numbers
             number_color = "black",
