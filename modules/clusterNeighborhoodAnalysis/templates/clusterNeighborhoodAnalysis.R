@@ -154,6 +154,9 @@ mean_hop_distance <- function(adj, cell_type, title="Dynamic Distance Heatmap", 
     names(cells_by_type) = types
     # Compute all-pairs distances once (|V|x|V|)
     dist_all = distances(g, v=V(g), to=V(g))
+    print("Change Inf to NA")
+    dist_all <- as.matrix(dist_all)
+    dist_all[!is.finite(dist_all)] <- NA_real_
     # print(dist_all)
     # Aggregate:
     print("message3")
@@ -181,6 +184,7 @@ mean_hop_distance <- function(adj, cell_type, title="Dynamic Distance Heatmap", 
             D[src, tgt] <- mean(nearest_hops, na.rm = TRUE)
         }
     }
+    saveRDS(D, gsub(".pdf", "_cells.RDS", figurePath), compress=TRUE)
     print("message6")
     # print(D[1:5, 1:5])
     W <- 1 / (D + 1e-8)
@@ -201,8 +205,8 @@ mean_hop_distance <- function(adj, cell_type, title="Dynamic Distance Heatmap", 
     pdf(figurePath, h=pdf_height, w=pdf_width)
         print(pheatmap::pheatmap(
             mat = D_plot,
-            cluster_rows = TRUE,         # Automatically clusters similar rows
-            cluster_cols = TRUE,         # Automatically clusters similar columns
+            cluster_rows = FALSE,         # Automatically clusters similar rows
+            cluster_cols = FALSE         # Automatically clusters similar columns
             color = colorRampPalette(c("navy", "white", "firebrick3"))(50), # Custom color gradient
             display_numbers = TRUE,      # Set to FALSE if your matrix is too large for text numbers
             number_color = "black",
@@ -229,19 +233,24 @@ getAdj = function(celltypes, OUTDIR, dat) {
         adjs = lapply(unique(dat$Sample), function(sample){
             print(sample)
             sub = subset(dat, Sample==sample)
-            Idents(sub) = as.data.frame(sub@meta.data)[[celltype]]
+            print("getAdj message1")
+            Idents(sub) = droplevels(as.data.frame(sub@meta.data)[[celltype]])
+            print("getAdj message2")
             sub = subset(x = sub, downsample = 1000)
             #print(head(sub[[celltype]]))
-            sub@meta.data[[celltype]] = clean_celltype(as.data.frame(sub@meta.data)[[celltype]])
+            sub@meta.data[[celltype]] = as.character(clean_celltype(as.data.frame(sub@meta.data)[[celltype]]))
+            sub@meta.data[[celltype]] = factor(sub@meta.data[[celltype]])
             print(sub)
+            print("getAdj message3")
             adj = getSpatialNeighborAdjacency(seurat_obj=sub, k=50,
                 coord_cols = c("x", "y"), radius_max = 50,
                 radius_min = 0)
+            print("getAdj message4")
             print(dim(adj))
             print(adj[1:4, 1:5])
             # print(head(sub[[celltype]]))
             cell_type = setNames(as.data.frame(sub@meta.data)[[celltype]], colnames(sub))
-            saveRDS(cell_type, "cell_type.RDS")
+            # saveRDS(cell_type, "cell_type.RDS")
             print(dim(cell_type))
             cell_type = cell_type[rownames(adj)]
             print(cell_type[1])
@@ -251,6 +260,7 @@ getAdj = function(celltypes, OUTDIR, dat) {
             meanDis = mean_hop_distance(adj, cell_type, 
                 title=paste0("/HopDistance_", sample), 
                 figurePath=paste0(OUTDIR, "/HopDistance_", sample, "_", celltype, ".pdf"))
+            saveRDS(meanDis, paste0(OUTDIR, "/HopDistance_", sample, "_", celltype, ".RDS"), compress=TRUE)
             return(meanDis)
         }) %>% setNames(unique(dat$Sample))
         adjs_D = lapply(adjs, function(adj){
@@ -260,7 +270,7 @@ getAdj = function(celltypes, OUTDIR, dat) {
             adj$Weight
         }) %>% setNames(paste0(unique(dat$Sample), "_Weight"))
         print(paste0(OUTDIR, "/AdjacentMatrices_", celltype, ".RDS"))
-        saveRDS(adjs, paste0(OUTDIR, "/AdjacentMatrices_", celltype, ".RDS"), compress=TRUE)
+        saveRDS(adjs, paste0(OUTDIR, "/HopDistanceMatrices_", celltype, ".RDS"), compress=TRUE)
         # Combine samples, calcualte mean hop distance, and plot
         ## Find the common intersecting Row names across ALL matrices
         common_rows = reduce(lapply(adjs_D, rownames), intersect)
@@ -296,8 +306,8 @@ getAdj = function(celltypes, OUTDIR, dat) {
                 # filename = "distance_heatmap.pdf",
                 # width = pdf_width,
                 # height = pdf_height,
-                cluster_rows = TRUE,         # Automatically clusters similar rows
-                cluster_cols = TRUE,         # Automatically clusters similar columns
+                cluster_rows = FALSE,         # Automatically clusters similar rows
+                cluster_cols = FALSE,         # Automatically clusters similar columns
                 color = colorRampPalette(c("navy", "white", "firebrick3"))(50), # Custom color gradient
                 display_numbers = TRUE,      # Set to FALSE if your matrix is too large for text numbers
                 number_color = "black",
